@@ -34,6 +34,7 @@ def test_upload_returns_frame_then_job_waits_for_background_validation(video_fac
             status_url = job.json()["status_url"]
             assert "/v1/" not in status_url
             assert client.get(status_url).json()["region_preview"].startswith("data:image/jpeg;base64,")
+            assert client.get(status_url).json()["duration_seconds"] == pytest.approx(2.5)
             release.set()
             deadline = time.monotonic() + 3
             while client.get(status_url).json()["status"] == "waiting_validation" and time.monotonic() < deadline:

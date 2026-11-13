@@ -36,6 +36,7 @@ class JobResponse(BaseModel):
     message: str
     status_url: str
     validation_status: str
+    duration_seconds: float | None = None
     queue_position: int | None = None
     attempts: int
     error: str | None = None

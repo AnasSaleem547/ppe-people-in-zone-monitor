@@ -27,6 +27,7 @@ def public_job(request, job):
     return dict(job_id=job["id"], status=job["status"], phase=job["phase"],
                 message=messages.get(job["status"], job["status"]), status_url=f"/api/jobs/{job['id']}",
                 validation_status=upload["status"], queue_position=repo.queue_position(job["id"]),
+                duration_seconds=metadata["duration_seconds"],
                 attempts=job["attempts"], error=job["error"], region_preview=image_data_uri(marked),
                 polygon=job["request"]["polygon"], result=job["result"])
 
