@@ -81,3 +81,20 @@ def region_preview(jpeg, polygon, original_width, original_height):
     if not ok:
         raise ValueError("Could not encode the marked region.")
     return encoded.tobytes()
+
+
+def video_endpoint(path):
+    """Read the VIDEO endpoint, excluding a potentially longer audio track."""
+    with av.open(str(path)) as video:
+        stream = video.streams.video[0]
+        if stream.duration is not None:
+            return float(stream.duration * stream.time_base)
+        previous, last, duration = None, None, None
+        for frame in video.decode(stream):
+            previous, last = last, float(frame.time)
+            if frame.duration:
+                duration = float(frame.duration * frame.time_base)
+        if last is None:
+            raise ValueError("No output video frames.")
+        spacing = duration or (last - previous if previous is not None else float(1 / (stream.average_rate or 30)))
+        return last + spacing
