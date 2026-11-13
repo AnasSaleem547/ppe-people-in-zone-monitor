@@ -102,3 +102,30 @@ checks do not establish physical speaker output. Live UI inspection was blocked
 by Work settings disabling local browser access. No new cloud upload/inference
 was needed for this revision. Existing local and cloud waveform samples in the
 reported run contain the 880 Hz alarm around -15 dBFS at video second 7.
+
+## Latest UI, limits and progress revision
+
+Current full suites: 42 Python tests and 5 JavaScript tests pass. Earlier counts
+are historical. Extra sound controls/browser-tone fallback were removed at the
+user's request; native controls remain. Source preservation still passes.
+
+New failing tests first captured the missing 50-MB/20-minute defaults, decoded
+limit enforcement, live frame counters, exact filename job name, moved region
+reference, and updated link label. Tests now cover incomplete diagnostic rows,
+isolation from previous attempts, changed counters across GET refreshes, percentage
+calculation and background validation refusing over-limit recordings.
+
+`environment.yml` pins Python 3.13.12, pip 25.3, FFmpeg upstream 8.0.1 and 75
+packages from the installed dependency graph. Parsed YAML and all package pins
+were checked against installed metadata. No fresh Conda environment was created.
+Local browser automation remains disabled in Work settings, so this revision's
+layout was checked through Streamlit render tests and controlled player geometry,
+not a live browser screenshot. No new inference or cloud upload was needed.
+
+SQLite reset: all four previous jobs had succeeded. Services were stopped, the
+SQLite backup API created `data/backups/jobs-before-reset-20261113T123642Z.sqlite3`,
+and its integrity check passed with four jobs preserved. The fresh registry has
+zero jobs and zero uploads. Old run links now return 404. Media files and cloud
+assets were retained. API/frontend health returned 200 after restart; the worker
+reported ready. Effective runtime limits checked as 50 MB and 1,200 seconds.
+SQLite 3.51.1 is also pinned in the environment file alongside Python/pip/FFmpeg.

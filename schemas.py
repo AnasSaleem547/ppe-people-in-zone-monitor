@@ -30,6 +30,8 @@ class UploadResponse(BaseModel):
 
 
 class JobResponse(BaseModel):
+    job_name: str = "Video"
+    progress: dict = Field(default_factory=dict)
     video_name: str = "Video"
     job_id: str
     status: str

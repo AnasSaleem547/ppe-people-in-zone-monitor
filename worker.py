@@ -34,8 +34,11 @@ class Worker:
         try:
             upload = repo.get_upload(job["upload_id"])
             if "report" not in checkpoint:
+                attempt_root = root / f"attempt-{job['attempts']}"
+                checkpoint["cv_root"] = str(attempt_root)
+                repo.update_job(job_id, checkpoint=checkpoint)
                 report = self.pipeline.run(upload["file_path"], body["polygon"], body["n_people"],
-                                           body["threshold_seconds"], root)
+                                           body["threshold_seconds"], attempt_root)
                 if report["status"] != "decoder_reached_end":
                     raise RuntimeError("The CV pipeline did not finish decoding the recording.")
                 checkpoint["report"] = report

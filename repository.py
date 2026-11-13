@@ -1,7 +1,5 @@
 """Small, transactional SQLite upload registry and FIFO job queue."""
 import json
-import re
-import unicodedata
 import sqlite3
 import time
 import uuid
@@ -51,9 +49,7 @@ class Repository:
 
     @staticmethod
     def _run_name(name, number):
-        stem = Path(name).stem
-        slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode().lower()).strip("-")[:60] or "video"
-        return f"{slug}-run-{number:04d}"
+        return f"run-{number:04d}"
 
     @contextmanager
     def connection(self):

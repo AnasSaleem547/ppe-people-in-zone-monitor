@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     data_dir: Path = ROOT / "data"
     api_base_url: str = "http://127.0.0.1:8010"
     environment: Literal["development", "test", "production"] = "development"
-    max_upload_mb: int = Field(default=200, ge=1)
+    max_upload_mb: int = Field(default=50, ge=1)
+    max_video_minutes: float = Field(default=20, gt=0)
     validation_workers: int = Field(default=1, ge=1, le=4)
     worker_poll_seconds: float = Field(default=1, gt=0)
     max_job_attempts: int = Field(default=3, ge=1, le=10)
@@ -37,6 +38,10 @@ class Settings(BaseSettings):
     max_image_seconds: float = Field(default=2., gt=0)
     max_body_reference_seconds: float = Field(default=2., gt=0)
     max_frame_gap_seconds: float = Field(default=1., gt=0)
+
+    @property
+    def max_video_seconds(self) -> float:
+        return self.max_video_minutes * 60
 
     @property
     def database_path(self) -> Path:

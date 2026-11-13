@@ -42,7 +42,7 @@ def inspect_video(path):
         raise ValueError("Could not read the uploaded video.") from exc
 
 
-def validate_video(path, max_frame_gap):
+def validate_video(path, max_frame_gap, max_duration_seconds=None):
     count, previous, origin, size = 0, None, None, None
     spacing, final_duration = None, None
     try:
@@ -65,11 +65,15 @@ def validate_video(path, max_frame_gap):
                 final_duration = frame.duration * frame.time_base if frame.duration else None
                 size = (frame.width, frame.height)
                 origin = stamp if origin is None else origin
+                if max_duration_seconds is not None and stamp - origin > max_duration_seconds:
+                    raise ValueError("Video duration exceeds the configured limit.")
                 previous = stamp
                 count += 1
         if not count:
             raise ValueError("No readable video frames.")
         tail = final_duration or spacing or nominal_spacing
+        if max_duration_seconds is not None and previous - origin + tail > Fraction(str(max_duration_seconds)):
+            raise ValueError("Video duration exceeds the configured limit.")
         return dict(frames=count, last_video_seconds=float(previous - origin),
                     duration_seconds=float(previous - origin + tail))
     except av.FFmpegError as exc:

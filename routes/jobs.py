@@ -9,6 +9,7 @@ from repository import Conflict
 from schemas import JobRequest, JobResponse
 from services.cv.media_utils import validate_polygon
 from services.media import image_data_uri, region_preview
+from services.progress import job_progress
 
 router = APIRouter(prefix="/api", tags=["Jobs"])
 
@@ -25,7 +26,7 @@ def public_job(request, job):
                 "preparing_delivery": "Preparing video playback.", "succeeded": "Processing complete.",
                 "failed": "Processing failed."}
     public_id, video_name = repo.public_identity(job)
-    return dict(job_id=public_id, video_name=video_name, status=job["status"], phase=job["phase"],
+    return dict(job_id=public_id, job_name=video_name, video_name=video_name, progress=job_progress(job, upload), status=job["status"], phase=job["phase"],
                 message=messages.get(job["status"], job["status"]), status_url=f"/api/jobs/{public_id}",
                 validation_status=upload["status"], queue_position=repo.queue_position(job["id"]),
                 duration_seconds=metadata["duration_seconds"],

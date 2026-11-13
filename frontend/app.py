@@ -25,18 +25,37 @@ def display_result(job):
     st.subheader(job.get("video_name", "Processed video"))
     result = job["result"]
     result_player(job)
-    st.link_button("Open video", result["video_url"])
-    with st.expander("Submitted region (reference)"):
-        show_image(job["region_preview"], caption="Region submitted before processing.")
+    st.link_button("Watch output video in a new tab", result["video_url"])
     st.metric("Alarm episodes in the output video", result["alarm_count"])
     for alarm in result["alarms"]:
         st.markdown(f"**Alarm {alarm['index']}** — triggered at {alarm['start_seconds']:.3f}s; "
                     f"ended at {alarm['end_seconds']:.3f}s ({alarm['duration_seconds']:.3f}s).")
         st.write(alarm["condition"])
-        st.caption(f"Observed at trigger: {alarm['observed_at_trigger']}; estimated: {alarm['estimated_at_trigger']}. "
-                   f"Ended because: {alarm['end_reason'].replace('_', ' ')}.")
     if not result["alarms"]:
         st.info("No alarm episodes were recorded under the submitted N/T rule.")
+
+
+def processing_reference(job):
+    st.write(job.get("job_name", job.get("video_name", "Video")))
+    st.caption("Submitted region")
+    with st.container(key="submitted-region"):
+        show_image(job["region_preview"], width=500)
+    st.html("<style>.st-key-submitted-region img {max-height:40vh;width:auto!important;object-fit:contain;}</style>")
+
+
+def progress_details(job):
+    progress = job.get("progress", {})
+    frames, total = progress.get("frames_analyzed", 0), progress.get("total_frames")
+    percent = progress.get("cv_percent")
+    if job["status"] == "processing":
+        title = f"Analyzing video — {frames:,} / {total:,} frames ({percent:g}%)" if total and percent is not None else f"Analyzing video — {frames:,} frames"
+        st.subheader(title)
+    else:
+        st.subheader(job["message"])
+    if percent is not None:
+        st.progress(percent / 100, text=f"Frames analyzed: {frames:,} / {total:,} ({percent:g}%)")
+    if job["status"] in ("processing", "adding_audio", "uploading"):
+        st.caption("Frame progress covers CV analysis. Audio and upload finish separately.")
 
 
 def main():
@@ -45,21 +64,21 @@ def main():
     client = APIClient(settings.api_base_url)
     st.title("People in Zone Monitor")
     st.write("Upload a recording, mark four corners, and check when the people-count rule is met.")
-    st.caption("The timer follows estimated occupancy. A new alarm requires direct observations; it resets when estimated occupancy drops below N.")
     with st.sidebar:
         st.subheader("Resume a run")
-        resume = st.text_input("Run name or existing job ID", value=st.query_params.get("job", ""))
+        resume = st.text_input("Saved run link ID", value=st.query_params.get("job", ""))
         if st.button("Load run", disabled=not resume):
             try:
                 st.session_state["job"] = client.status(resume.strip())
                 st.query_params["job"] = resume.strip()
             except APIError as exc:
                 st.error(str(exc))
-        st.caption("One local worker processes videos in order. Closing this page does not cancel an accepted job.")
+        st.caption("Reopen an accepted job after closing this page, without processing again. Use the ID from its page URL.")
 
     st.subheader("1. Upload a video")
     file = st.file_uploader("Video recording", type=["mp4", "mov", "avi", "mkv", "webm", "m4v"],
                             max_upload_size=settings.max_upload_mb)
+    st.caption(f"Maximum {settings.max_upload_mb} MB and {settings.max_video_minutes:g} minutes per video.")
     if st.button("Get first frame", disabled=file is None):
         try:
             with st.spinner("Uploading and reading the first frame…"):
@@ -99,7 +118,7 @@ def main():
     if not job:
         return
     st.subheader("3. Processing status")
-    st.write("Run: " + job["job_id"])
+    processing_reference(job)
     interval = polling_interval(job.get("duration_seconds"), job["status"], settings.short_video_seconds, settings.status_poll_seconds)
 
     @st.fragment(run_every=interval)
@@ -111,7 +130,7 @@ def main():
             st.error(str(exc))
             return
         st.session_state["job"] = fresh
-        st.write(fresh["message"])
+        progress_details(fresh)
         if fresh.get("queue_position"):
             st.caption(f"Queue position: {fresh['queue_position']}")
         if fresh["error"]:

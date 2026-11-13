@@ -26,8 +26,10 @@ async def upload_video(request: Request, file: UploadFile):
                     raise HTTPException(413, f"Video exceeds the {settings.max_upload_mb} MB upload limit.")
                 target.write(chunk)
         preview = await run_in_threadpool(inspect_video, path)
+        if preview["duration_seconds"] is not None and preview["duration_seconds"] > settings.max_video_seconds:
+            raise ValueError(f"Video duration exceeds the {settings.max_video_minutes:g}-minute limit.")
         jpeg = preview.pop("jpeg")
-        preview["filename"] = Path((file.filename or "video").replace("\\", "/")).name[:240]
+        preview["filename"] = Path((file.filename or "video").replace("\\", "/")).name
         preview_path.write_bytes(jpeg)
         request.app.state.repository.add_upload(upload_id, str(path), str(preview_path), preview)
     except (ValueError, HTTPException) as exc:

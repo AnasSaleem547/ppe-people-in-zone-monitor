@@ -19,7 +19,13 @@ class ValidationService:
             return
         upload = self.repository.get_upload(upload_id)
         try:
-            details = self.validator(upload["file_path"], self.settings.max_frame_gap_seconds)
+            if self.validator is validate_video:
+                details = self.validator(upload["file_path"], self.settings.max_frame_gap_seconds,
+                                         max_duration_seconds=self.settings.max_video_seconds)
+            else:
+                details = self.validator(upload["file_path"], self.settings.max_frame_gap_seconds)
+            if details and details.get("duration_seconds", 0) > self.settings.max_video_seconds:
+                raise ValueError(f"Video duration exceeds the {self.settings.max_video_minutes:g}-minute limit.")
         except ValueError as exc:
             self.repository.finish_validation(upload_id, False, str(exc))
         except Exception:
