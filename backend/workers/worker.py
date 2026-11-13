@@ -1,4 +1,4 @@
-"""Single local worker: python worker.py. No Celery/Redis dependency."""
+"""Single local worker: python -m backend.workers.worker. No Celery/Redis dependency."""
 import logging
 import signal
 import time

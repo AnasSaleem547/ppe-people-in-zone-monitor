@@ -27,8 +27,9 @@ class Settings(BaseSettings):
     cloudinary_api_secret: SecretStr = SecretStr("")
     cloudinary_folder: str = "ppe-monitor"
     cloudinary_timeout_seconds: int = Field(default=120, ge=1)
+    # CV model and thresholds: keep these together when tuning the pipeline.
     model_name: Literal["yolo26m.pt"] = "yolo26m.pt"
-    model_path: Path = ROOT / "models" / "yolo26m.pt"
+    model_path: Path = ROOT / "models" / model_name
     device: Literal["auto", "cpu", "cuda"] = "auto"
     image_size: int = Field(default=640, ge=32)
     full_frame_context: bool = False
