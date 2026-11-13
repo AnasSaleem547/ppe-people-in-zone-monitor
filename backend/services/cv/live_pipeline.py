@@ -8,6 +8,7 @@ import av,cv2,numpy as np
 from ultralytics import YOLO
 from ultralytics.engine.results import Boxes
 from ultralytics.trackers.byte_tracker import BYTETracker
+from ultralytics.trackers.basetrack import TrackState
 from ultralytics.trackers.utils import matching
 from .occupancy import Occupancy,rectangle_iou,same_upper_extent
 from .visual_support import VisualSupport
@@ -46,9 +47,18 @@ class ExtentTracker(BYTETracker):
     bounds=None
     def get_dists(self,tracks,detections):
         costs=matching.iou_distance(tracks,detections)
+        overlaps=1.-costs.copy()
+        active=[k for k,p in enumerate(tracks) if p.state==TrackState.Tracked]
         for i,a in enumerate(tracks):
             for j,b in enumerate(detections):
                 if not compatible_extent(a.xyxy,b.xyxy) and not edge_expansion(a.xyxy,b.xyxy,self.bounds):costs[i,j]=1.
+                # Two boxes around a visible neighbour must not reactivate a
+                # missing person at that neighbour's position. Keep the missing
+                # person's previous extent available to the image/cover checks.
+                if overlaps[i,j]<.3 and any(
+                    k!=i and overlaps[k,j]>=.5 and rectangle_iou(a.xyxy,tracks[k].xyxy)<.3
+                    for k in active
+                ):costs[i,j]=1.
         return costs
     def init_track(self,results,img=None):
         detections=super().init_track(results,img)
