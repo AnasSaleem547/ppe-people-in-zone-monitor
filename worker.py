@@ -32,8 +32,8 @@ class Worker:
         root = self.settings.data_dir / "jobs" / job_id
         root.mkdir(parents=True, exist_ok=True)
         try:
+            upload = repo.get_upload(job["upload_id"])
             if "report" not in checkpoint:
-                upload = repo.get_upload(job["upload_id"])
                 report = self.pipeline.run(upload["file_path"], body["polygon"], body["n_people"],
                                            body["threshold_seconds"], root)
                 if report["status"] != "decoder_reached_end":
@@ -42,7 +42,7 @@ class Worker:
                 repo.update_job(job_id, checkpoint=checkpoint)
             report = checkpoint["report"]
             annotated = Path(report["output_dir"]) / "annotated.mp4"
-            endpoint = video_endpoint(annotated)
+            endpoint = max(video_endpoint(annotated), upload["metadata"].get("validation", {}).get("duration_seconds", 0))
             intervals = build_intervals(report, endpoint)
             if "final_video" not in checkpoint:
                 repo.update_job(job_id, status="adding_audio", phase="adding_audio")

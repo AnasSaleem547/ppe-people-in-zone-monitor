@@ -44,12 +44,14 @@ def inspect_video(path):
 
 def validate_video(path, max_frame_gap):
     count, previous, origin, size = 0, None, None, None
+    spacing, final_duration = None, None
     try:
         with av.open(str(path)) as video:
             if not video.streams.video:
                 raise ValueError("No video stream.")
             stream = video.streams.video[0]
             stream.codec_context.thread_count = 2
+            nominal_spacing = Fraction(1, 1) / (stream.average_rate or 30)
             for frame in video.decode(stream):
                 if frame.pts is None or frame.is_corrupt:
                     raise ValueError("Corrupt video frame or missing timestamp.")
@@ -58,13 +60,18 @@ def validate_video(path, max_frame_gap):
                     raise ValueError("Unusable timestamp order or excessive video gap.")
                 if size is not None and size != (frame.width, frame.height):
                     raise ValueError("Video dimensions change during the recording.")
+                if previous is not None:
+                    spacing = stamp - previous
+                final_duration = frame.duration * frame.time_base if frame.duration else None
                 size = (frame.width, frame.height)
                 origin = stamp if origin is None else origin
                 previous = stamp
                 count += 1
         if not count:
             raise ValueError("No readable video frames.")
-        return dict(frames=count, last_video_seconds=float(previous - origin))
+        tail = final_duration or spacing or nominal_spacing
+        return dict(frames=count, last_video_seconds=float(previous - origin),
+                    duration_seconds=float(previous - origin + tail))
     except av.FFmpegError as exc:
         raise ValueError("Video decoding failed during background validation.") from exc
 

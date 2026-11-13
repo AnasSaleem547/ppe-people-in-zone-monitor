@@ -36,6 +36,12 @@ def public_job(request, job):
 def create_job(request: Request, body: JobRequest,
                idempotency_key: Annotated[str | None, Header(min_length=1, max_length=128)] = None):
     repo = request.app.state.repository
+    data = body.model_dump(mode="json")
+    existing = repo.get_job_by_key(idempotency_key) if idempotency_key else None
+    if existing:
+        if existing["request"] != data:
+            raise HTTPException(409, "This idempotency key was already used with different inputs.")
+        return public_job(request, existing)
     upload = repo.get_upload(body.upload_id)
     if upload is None:
         raise HTTPException(404, "Upload not found.")
@@ -43,7 +49,7 @@ def create_job(request: Request, body: JobRequest,
         raise HTTPException(410, "Upload has expired. Upload the video again.")
     try:
         validate_polygon(body.polygon, upload["metadata"]["width"], upload["metadata"]["height"])
-        job = repo.create_job(body.model_dump(mode="json"), idempotency_key or uuid.uuid4().hex)
+        job = repo.create_job(data, idempotency_key or uuid.uuid4().hex)
     except Conflict as exc:
         raise HTTPException(409, str(exc)) from exc
     except ValueError as exc:

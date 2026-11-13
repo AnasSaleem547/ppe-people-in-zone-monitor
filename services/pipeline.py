@@ -1,9 +1,6 @@
 """Translate web inputs to cells 2, 12 and 13 without changing CV logic."""
 import gc
-import hashlib
-import importlib.metadata
 import os
-from pathlib import Path
 
 import cv2
 import numpy as np

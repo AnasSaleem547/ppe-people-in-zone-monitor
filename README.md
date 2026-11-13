@@ -40,7 +40,7 @@ Run these in **three terminals**, each in `codebase`:
 ```
 
 ```bash
-.venv/bin/python -m streamlit run frontend/app.py --server.address 127.0.0.1 --server.port 8501 --browser.gatherUsageStats false
+.venv/bin/python -m streamlit run frontend/app.py --server.address 127.0.0.1 --server.port 8501 --server.headless true --browser.gatherUsageStats false
 ```
 
 Open http://127.0.0.1:8501. API documentation: http://127.0.0.1:8010/docs.
@@ -129,12 +129,16 @@ until the notebook's estimated count falls below N. Concealment can therefore
 keep an alarm active. Another qualifying period can trigger another episode.
 
 The audio service reads recorded trigger/reset events. Pre-trigger resets are
-ignored. An active final episode ends at the output video's endpoint and is
+ignored. An active final episode ends at the decoded source video's endpoint and is
 labelled `video_ended`, not a count invalidation. FFmpeg copies the annotated video
 packets and adds a generated 880 Hz alarm track over silence. Original source
 audio is not retained, matching the notebook's video-only writer. Zero alarms
 produce silence. AAC audio encoding can smear edges by a small fraction of a
 second; playback sound also depends on browser/device volume and mute settings.
+The notebook's nominal encoder rate can shorten its final frame's hold. The audio
+packaging step restores that hold to the validated source endpoint, without
+changing encoded pixels or frame timestamps. If the source omits final-frame
+duration, validation uses its last frame spacing or nominal rate as a fallback.
 
 Cloudinary assets use:
 

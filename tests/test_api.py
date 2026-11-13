@@ -87,3 +87,21 @@ def test_api_rejects_bad_inputs_and_exposes_only_three_application_routes(video_
                        {"polygon": [[0, 0], [159, 119], [159, 0], [0, 119]]},
                        {"polygon": [[0, 0], [160, 0], [159, 119], [0, 119]]}):
             assert client.post("/api/jobs", json=dict(payload(upload["upload_id"]), **change)).status_code == 422
+
+
+def test_existing_submission_remains_idempotent_after_upload_expiry(video_factory, tmp_path):
+    from config import Settings
+    from main import create_app
+    app = create_app(Settings(_env_file=None, data_dir=tmp_path / "data"))
+    with TestClient(app) as client:
+        upload = client.post("/api/uploads", files={"file": ("a.mp4", video_factory().read_bytes())}).json()
+        body = payload(upload["upload_id"])
+        first = client.post("/api/jobs", json=body, headers={"Idempotency-Key": "accepted"}).json()
+        with app.state.repository.connection() as db:
+            db.execute("UPDATE uploads SET created_at=0 WHERE id=?", (upload["upload_id"],))
+        repeated = client.post("/api/jobs", json=body, headers={"Idempotency-Key": "accepted"})
+        assert repeated.status_code == 202
+        assert repeated.json()["job_id"] == first["job_id"]
+        conflict = client.post("/api/jobs", json=dict(body, n_people=3), headers={"Idempotency-Key": "accepted"})
+        assert conflict.status_code == 409
+        assert client.post("/api/jobs", json=body, headers={"Idempotency-Key": "new"}).status_code == 410

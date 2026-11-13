@@ -77,8 +77,13 @@ class Repository:
             cursor = db.execute("UPDATE uploads SET status='validating' WHERE id=? AND status='pending'", (upload_id,))
             return cursor.rowcount == 1
 
-    def finish_validation(self, upload_id, valid, error=None):
+    def finish_validation(self, upload_id, valid, error=None, details=None):
         with self.connection() as db:
+            if details is not None:
+                row = db.execute("SELECT metadata FROM uploads WHERE id=?", (upload_id,)).fetchone()
+                metadata = json.loads(row[0])
+                metadata["validation"] = details
+                db.execute("UPDATE uploads SET metadata=? WHERE id=?", (json.dumps(metadata), upload_id))
             db.execute("UPDATE uploads SET status=?,error=? WHERE id=?",
                        ("valid" if valid else "invalid", error, upload_id))
             db.execute("UPDATE jobs SET status=?,phase=?,error=?,updated_at=? WHERE upload_id=? AND status='waiting_validation'",
@@ -108,6 +113,10 @@ class Repository:
     def get_job(self, job_id):
         with self.connection() as db:
             return self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
+
+    def get_job_by_key(self, request_key):
+        with self.connection() as db:
+            return self.decode(db.execute("SELECT * FROM jobs WHERE request_key=?", (request_key,)).fetchone())
 
     def claim_job(self):
         with self.connection() as db:

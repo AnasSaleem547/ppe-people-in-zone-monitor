@@ -19,14 +19,14 @@ class ValidationService:
             return
         upload = self.repository.get_upload(upload_id)
         try:
-            self.validator(upload["file_path"], self.settings.max_frame_gap_seconds)
+            details = self.validator(upload["file_path"], self.settings.max_frame_gap_seconds)
         except ValueError as exc:
             self.repository.finish_validation(upload_id, False, str(exc))
         except Exception:
             log.exception("Background validation failed for upload %s", upload_id)
             self.repository.finish_validation(upload_id, False, "Background video validation could not complete.")
         else:
-            self.repository.finish_validation(upload_id, True)
+            self.repository.finish_validation(upload_id, True, details=details)
 
     def close(self):
         self.executor.shutdown(wait=True)

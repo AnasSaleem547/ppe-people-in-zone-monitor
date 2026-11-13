@@ -12,6 +12,7 @@ def test_worker_checkpoints_cv_and_retries_upload_without_repeating_inference(vi
     from worker import Worker
     repo = Repository(tmp_path / "db.sqlite")
     add_upload(repo, tmp_path, "valid")
+    repo.finish_validation("u1", True, details={"duration_seconds": 3., "frames": 25})
     job = repo.create_job(request(), "worker")
     clip = video_factory()
     class Pipeline:
@@ -39,11 +40,14 @@ def test_worker_checkpoints_cv_and_retries_upload_without_repeating_inference(vi
     assert saved["status"] == "queued"
     assert "report" in saved["checkpoint"]
     assert Path(saved["checkpoint"]["final_video"]).is_file()
-    assert worker.run_once() is True
+    # A fresh worker/repository must reuse durable checkpoints too.
+    restarted = Worker(worker.settings, Repository(tmp_path / "db.sqlite"), worker.pipeline, worker.storage)
+    assert restarted.run_once() is True
     finished = repo.get_job(job["id"])
     assert finished["status"] == "succeeded"
     assert finished["attempts"] == 2
     assert finished["result"]["alarm_count"] == 1
+    assert finished["result"]["duration_seconds"] == 3.
     assert finished["result"]["alarms"][0]["start_seconds"] == .5
     assert worker.run_once() is False
 

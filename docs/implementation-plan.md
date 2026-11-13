@@ -31,46 +31,46 @@ Ultralytics 8.4.37, Cloudinary Python SDK.
 Files: services/cv/*.py, services/pipeline.py, config.py, provenance/*,
 tests/test_cv_contract.py, tests/test_pipeline.py, requirements*.txt.
 Interfaces: Settings; PipelineRunner.run(path, polygon, n, seconds, output_root).
-- [ ] Write failing source-preservation, timer, adapter-call and rendering tests.
-- [ ] Run tests; observe missing implementation failures.
-- [ ] Extract seven modules, configuration and adapter with lazy model loading.
-- [ ] Run tests; commit with Codex co-author.
+- [x] Write failing source-preservation, timer, adapter-call and rendering tests.
+- [x] Run tests; observe missing implementation failures.
+- [x] Extract seven modules, configuration and adapter with lazy model loading.
+- [x] Run tests; commit with Codex co-author.
 
 ## Task 2: Persistent queue and background validation
 Files: repository.py, schemas.py, services/media.py, tests/test_repository.py,
 tests/test_media.py. Interfaces: Repository upload/job CRUD, claim/recovery;
 inspect_video, validate_video, region_preview.
-- [ ] Write failing queue durability/claim/idempotency/validation-gate tests and
+- [x] Write failing queue durability/claim/idempotency/validation-gate tests and
       real video timestamp/preview/invalid media tests.
-- [ ] Run tests; implement SQLite transactions and media handling; run suite.
-- [ ] Commit with Codex co-author.
+- [x] Run tests; implement SQLite transactions and media handling; run suite.
+- [x] Commit with Codex co-author.
 
 ## Task 3: API routes
 Files: main.py, routes/*.py, tests/test_api.py.
 Interfaces: create_app(settings), three routes, JSON with inline image previews.
-- [ ] Write failing upload/job/status tests including pending and failed validation,
+- [x] Write failing upload/job/status tests including pending and failed validation,
       invalid coordinates, oversized upload, repeated key and unknown identifiers.
-- [ ] Run tests; implement routes and background-validator lifecycle; run suite.
-- [ ] Commit with Codex co-author.
+- [x] Run tests; implement routes and background-validator lifecycle; run suite.
+- [x] Commit with Codex co-author.
 
 ## Task 4: Audio, cloud and worker
 Files: services/alarms.py, services/cloud_storage.py, worker.py,
 tests/test_alarms.py, tests/test_worker.py, tests/test_cloud.py.
 Interfaces: build_intervals(report, endpoint); add_alarm_audio(...);
 CloudStorage.upload(...); Worker.run_once().
-- [ ] Write failing trigger/reset/EOF tests, real FFmpeg waveform/timestamp tests,
+- [x] Write failing trigger/reset/EOF tests, real FFmpeg waveform/timestamp tests,
       delivery-URL tests and checkpoint/retry/restart worker tests.
-- [ ] Run tests; implement independent postprocessing and single-worker queue loop.
-- [ ] Run suite; commit with Codex co-author.
+- [x] Run tests; implement independent postprocessing and single-worker queue loop.
+- [x] Run suite; commit with Codex co-author.
 
 ## Task 5: Streamlit UI and documentation
 Files: frontend/app.py, frontend/api_client.py, frontend/annotation.py,
 frontend/annotation.js, tests/test_frontend.py, tests/annotation.test.mjs, README.md.
 Interfaces: JS canvas ↔ original-coordinate points; Python API client; UI state.
-- [ ] Write/run failing coordinate, component-event and API client/polling tests.
-- [ ] Implement upload/annotation/status/result flow, region verification and audio
+- [x] Write/run failing coordinate, component-event and API client/polling tests.
+- [x] Implement upload/annotation/status/result flow, region verification and audio
       playback. Document setup, env, worker operation and guarantees.
-- [ ] Run all tests, browser smoke, real short inference and authorized small
+- [x] Run all tests, browser smoke, real short inference and authorized small
       Cloudinary integration test. Review full code and fix important findings
       test-first. Commit with Codex co-author.
 
@@ -78,3 +78,26 @@ Interfaces: JS canvas ↔ original-coordinate points; Python API client; UI stat
 Approved implementation proceeds without another approval round.
 Ruling: use a new Git repository inside codebase because its parent has no Git
 repository and the user requested all implementation in that folder.
+
+## Completion ledger
+
+- Task 1 complete: six tests RED→GREEN; commit 59c9d87.
+- Task 2 complete: nine additional tests RED→GREEN; commit cc2ed71.
+- Task 3 complete: three API tests RED→GREEN; commit 6d511f7.
+- Task 4 complete: seven tests RED→GREEN, real FFmpeg checks; commit d390b0c.
+- Task 5 complete: frontend tests RED→GREEN, browser/cloud/model checks; commit 66425fe plus final verification commit.
+- Final review: independent reviewer checked all modules and source preservation.
+  Expiry/idempotency finding reproduced RED→GREEN. Optional fresh-worker restart
+  coverage added to existing checkpoint test, requiring no production change.
+- Final timing finding reproduced RED→GREEN; final-frame hold adjusted only in
+  post-CV media packaging. Current tests: 33 Python + 3 JavaScript, all passing.
+- Ruling: keep this standalone repository on feat/fastapi-streamlit, without a
+  remote or integration branch. The parent is not a repository. Cost if wrong:
+  Git history can later be imported into the intended repository.
+- Ruling: use API port 8010 because 8000 is occupied by an unrelated service.
+  Cost if wrong: change API_BASE_URL and the launch command together.
+- Ruling: retain the original CV writer and restore final-frame hold in audio
+  packaging using validated source timing. Cost/limit: when final frame duration
+  is missing, the last frame spacing or nominal rate is an estimate. No claim
+  of universal delivery timing equivalence after Cloudinary conversion.
+- No deferred reviewer findings remain. No code was pushed or published as a site.

@@ -59,3 +59,26 @@ def test_no_alarm_produces_silent_track_without_shortening_video(video_factory, 
     with av.open(str(target)) as c:
         assert len(c.streams.audio) == 1
     assert abs(video_endpoint(target) - endpoint) < .001
+
+
+def test_audio_package_holds_last_frame_until_validated_source_endpoint(tmp_path):
+    from fractions import Fraction
+    from services.cv.media_utils import AnnotatedVideo
+    from services.alarms import add_alarm_audio
+    from services.media import video_endpoint
+    source = tmp_path / "notebook.mp4"
+    writer = AnnotatedVideo(str(source), 160, 120)
+    for i in range(12):
+        writer.write(np.full((120,160,3), 40, np.uint8), Fraction(i, 5))
+    writer.close()
+    assert video_endpoint(source) == 2.233333
+    target = tmp_path / "aligned.mp4"
+    add_alarm_audio(source, target, [dict(start_seconds=.4, end_seconds=2.4)], 2.4)
+    assert abs(video_endpoint(target) - 2.4) < .001
+    def frames(path):
+        with av.open(str(path)) as c:
+            return [(float(f.time), f.to_ndarray()) for f in c.decode(video=0)]
+    original, final = frames(source), frames(target)
+    assert [x[0] for x in original] == [x[0] for x in final]
+    for a, b in zip(original, final):
+        np.testing.assert_array_equal(a[1], b[1])

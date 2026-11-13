@@ -16,7 +16,9 @@ def test_preview_uses_actual_dimensions_and_background_validation_reads_all_fram
     assert preview["preview_height"] == 121
     image = cv2.imdecode(np.frombuffer(preview["jpeg"], np.uint8), cv2.IMREAD_COLOR)
     assert image.shape[:2] == (121, 960)
-    assert validate_video(p, 1)["frames"] == 25
+    checked = validate_video(p, 1)
+    assert checked["frames"] == 25
+    assert checked["duration_seconds"] == pytest.approx(2.5)
 
 
 def test_preflight_rejects_timestamp_gap_after_a_readable_first_frame(video_factory):
