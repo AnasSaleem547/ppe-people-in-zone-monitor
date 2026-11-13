@@ -3,6 +3,8 @@ import json
 import sqlite3
 import time
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -41,15 +43,26 @@ class Repository:
             db.execute("BEGIN IMMEDIATE")
             if "public_id" not in {r[1] for r in db.execute("PRAGMA table_info(jobs)")}:
                 db.execute("ALTER TABLE jobs ADD COLUMN public_id TEXT")
-            rows = db.execute("SELECT jobs.id,jobs.rowid,uploads.metadata FROM jobs JOIN uploads ON jobs.upload_id=uploads.id WHERE public_id IS NULL").fetchall()
+            db.execute("CREATE TABLE IF NOT EXISTS job_aliases (alias TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(id))")
+            rows = db.execute("SELECT jobs.id,jobs.public_id,jobs.created_at,uploads.metadata FROM jobs JOIN uploads ON jobs.upload_id=uploads.id ORDER BY jobs.created_at,jobs.rowid").fetchall()
             for row in rows:
-                name = json.loads(row[2]).get("filename", "Video")
-                db.execute("UPDATE jobs SET public_id=? WHERE id=?", (self._run_name(name,row[1]),row[0]))
+                if row[1] and "_run_" in row[1]:
+                    continue
+                name = json.loads(row[3]).get("filename", "Video")
+                if row[1]:
+                    db.execute("INSERT OR IGNORE INTO job_aliases VALUES(?,?)", (row[1],row[0]))
+                public_id = self._allocate_name(db, name, row[2])
+                db.execute("UPDATE jobs SET public_id=? WHERE id=?", (public_id,row[0]))
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS public_job_name ON jobs(public_id)")
 
     @staticmethod
-    def _run_name(name, number):
-        return f"run-{number:04d}"
+    def _allocate_name(db, filename, created_at):
+        date = datetime.fromtimestamp(created_at, ZoneInfo("Asia/Karachi")).strftime("%d/%m/%Y")
+        prefix = f"{filename}_run_{date}_"
+        number = 1
+        while db.execute("SELECT 1 FROM jobs WHERE public_id=?", (f"{prefix}{number:03d}",)).fetchone():
+            number += 1
+        return f"{prefix}{number:03d}"
 
     @contextmanager
     def connection(self):
@@ -123,11 +136,7 @@ class Repository:
             status = "queued" if upload["status"] == "valid" else "waiting_validation"
             db.execute("INSERT INTO jobs(id,request_key,upload_id,request,status,phase,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
                        (job_id, request_key, request["upload_id"], serialized, status, status, now, now))
-            number = db.execute("SELECT rowid FROM jobs WHERE id=?", (job_id,)).fetchone()[0]
-            name = self._run_name(upload["metadata"].get("filename", "Video"), number)
-            while db.execute("SELECT 1 FROM jobs WHERE public_id=?", (name,)).fetchone():
-                number += 1
-                name = self._run_name(upload["metadata"].get("filename", "Video"), number)
+            name = self._allocate_name(db, upload["metadata"].get("filename", "Video"), now)
             db.execute("UPDATE jobs SET public_id=? WHERE id=?", (name, job_id))
             return self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
 
@@ -137,7 +146,7 @@ class Repository:
 
     def get_job(self, job_id):
         with self.connection() as db:
-            return self.decode(db.execute("SELECT * FROM jobs WHERE id=? OR public_id=?", (job_id,job_id)).fetchone())
+            return self.decode(db.execute("SELECT * FROM jobs WHERE id=? OR public_id=? OR id IN (SELECT job_id FROM job_aliases WHERE alias=?)", (job_id,job_id,job_id)).fetchone())
 
     def get_job_by_key(self, request_key):
         with self.connection() as db:

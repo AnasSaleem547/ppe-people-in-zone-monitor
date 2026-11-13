@@ -151,3 +151,12 @@ requirements such as Streamlit's chart/map libraries remain installer requiremen
 although this app does not use those features. Removing their manifest lines alone
 would not prevent installation. No fresh Conda environment/VM was created, so a
 clean installation is not claimed as tested. Python/pip/FFmpeg/SQLite pins remain.
+
+## Unified dated job names and sidebar
+
+Current suite: 46 Python tests and 5 JavaScript tests pass. API tests cover exact
+filename plus DD/MM/YYYY naming, a UTC-to-Karachi date boundary, repeated-file
+sequence numbers, names containing spaces and #, URL encoding/date slashes, and
+old-ID migration aliases. Existing manual-only GET tests still pass after renaming
+the load button. Streamlit's native collapsible sidebar is explicitly configured
+expanded initially. Live browser verification remains unavailable in Work settings.

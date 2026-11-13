@@ -1,5 +1,6 @@
 import time
 import uuid
+from urllib.parse import quote
 from pathlib import Path
 from typing import Annotated
 
@@ -26,8 +27,8 @@ def public_job(request, job):
                 "preparing_delivery": "Preparing video playback.", "succeeded": "Processing complete.",
                 "failed": "Processing failed."}
     public_id, video_name = repo.public_identity(job)
-    return dict(job_id=public_id, job_name=video_name, video_name=video_name, progress=job_progress(job, upload), status=job["status"], phase=job["phase"],
-                message=messages.get(job["status"], job["status"]), status_url=f"/api/jobs/{public_id}",
+    return dict(job_id=public_id, job_name=public_id, video_name=video_name, progress=job_progress(job, upload), status=job["status"], phase=job["phase"],
+                message=messages.get(job["status"], job["status"]), status_url=f"/api/jobs/{quote(public_id, safe='')}",
                 validation_status=upload["status"], queue_position=repo.queue_position(job["id"]),
                 duration_seconds=metadata["duration_seconds"],
                 attempts=job["attempts"], error=job["error"], region_preview=image_data_uri(marked),
@@ -59,7 +60,7 @@ def create_job(request: Request, body: JobRequest,
     return public_job(request, job)
 
 
-@router.get("/jobs/{job_id}", response_model=JobResponse)
+@router.get("/jobs/{job_id:path}", response_model=JobResponse)
 def get_job(request: Request, job_id: str):
     job = request.app.state.repository.get_job(job_id)
     if job is None:

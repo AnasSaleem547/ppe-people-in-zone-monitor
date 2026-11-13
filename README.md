@@ -110,11 +110,15 @@ secret in frontend code, API responses or logs.
    show trigger/end times, durations and conditions. There is no second region
    confirmation or extra sound toolbar.
 
-**Resume a run** reopens an accepted job after closing/refreshing the page,
-without rerunning CV. Use the ID from the page's `?job=` URL. The displayed
-`job_name` is exactly the uploaded basename, including spaces, case and extension.
-Internal `run-0001`-style IDs distinguish duplicate names; storage/cloud isolation
-continues to use random internal IDs. Filenames never become filesystem paths.
+**Query Previous Jobs** accepts the same name shown in Processing status:
+`tezeract_cropped.mp4_run_13/11/2026_001`. The uploaded filename is preserved,
+followed by `_run_DD/MM/YYYY_00N`. Dates use Asia/Karachi; numbering starts at
+001 for each filename/date and grows beyond three digits if needed. Names are
+allocated transactionally and stored once. Click **Load job** to fetch the job;
+there are no automatic lookups. Use Streamlit's sidebar arrow/menu to collapse
+or reopen the sidebar. Previous run IDs remain valid aliases, and random storage
+IDs remain internal. Date slashes and filename characters are URL-encoded in API
+links; GET accepts the decoded name. Filenames never become local filesystem paths.
 
 ## API contract
 

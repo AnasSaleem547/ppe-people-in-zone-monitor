@@ -30,7 +30,7 @@ def test_status_get_happens_only_when_check_or_load_is_clicked(monkeypatch):
     assert requests==[('GET','/api/jobs/run-0001')]
     at.run()
     assert len(requests)==1
-    next(b for b in at.button if b.label=='Load run').click().run()
+    next(b for b in at.button if b.label=='Load job').click().run()
     assert len(requests)==2
 
 

@@ -10,9 +10,10 @@ def test_video_filename_names_runs_and_existing_links_still_work(video_factory, 
     with TestClient(app) as client:
         upload = client.post('/api/uploads', files={'file': ('Front Door.MP4', video_factory().read_bytes())}).json()
         a = client.post('/api/jobs', json=payload(upload['upload_id'])).json()
-        assert a['job_name'] == 'Front Door.MP4'
+        assert a['job_name'] == a['job_id']
+        assert a['job_name'].startswith('Front Door.MP4_run_')
         b = client.post('/api/jobs', json=payload(upload['upload_id'])).json()
-        assert b['job_name'] == 'Front Door.MP4'
+        assert b['job_name'].endswith('_002')
         assert b['job_id'] != a['job_id']
         assert a['video_name'] == 'Front Door.MP4'
         internal = app.state.repository.get_job(a['job_id'])['id']

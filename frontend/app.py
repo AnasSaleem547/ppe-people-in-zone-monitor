@@ -22,7 +22,7 @@ def show_image(data_uri, **kwargs):
 
 
 def display_result(job):
-    st.subheader(job.get("video_name", "Processed video"))
+    st.subheader(job.get("job_name", job.get("video_name", "Processed video")))
     result = job["result"]
     result_player(job)
     st.link_button("Watch output video in a new tab", result["video_url"])
@@ -59,21 +59,20 @@ def progress_details(job):
 
 
 def main():
-    st.set_page_config(page_title="People in Zone Monitor", layout="wide")
+    st.set_page_config(page_title="People in Zone Monitor", layout="wide", initial_sidebar_state="expanded")
     settings = Settings()
     client = APIClient(settings.api_base_url)
     st.title("People in Zone Monitor")
     st.write("Upload a recording, mark four corners, and check when the people-count rule is met.")
     with st.sidebar:
-        st.subheader("Resume a run")
-        resume = st.text_input("Saved run link ID", value=st.query_params.get("job", ""))
-        if st.button("Load run", disabled=not resume):
+        st.subheader("Query Previous Jobs")
+        resume = st.text_input("Job name", value=st.query_params.get("job", ""), label_visibility="collapsed", placeholder="Enter job name")
+        if st.button("Load job", disabled=not resume):
             try:
                 st.session_state["job"] = client.status(resume.strip())
-                st.query_params["job"] = resume.strip()
+                st.query_params["job"] = st.session_state["job"]["job_id"]
             except APIError as exc:
                 st.error(str(exc))
-        st.caption("Reopen an accepted job after closing this page, without processing again. Use the ID from its page URL.")
 
     st.subheader("1. Upload a video")
     file = st.file_uploader("Video recording", type=["mp4", "mov", "avi", "mkv", "webm", "m4v"],

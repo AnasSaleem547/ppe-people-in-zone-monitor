@@ -74,7 +74,7 @@ def test_get_refresh_reports_changed_frame_counts(video_factory,tmp_path):
         repo=app.state.repository
         repo.finish_validation(u['upload_id'],True,details={'frames':25,'duration_seconds':2.5})
         job=client.post('/api/jobs',json=payload(u['upload_id'])).json()
-        assert job['job_name']=='Front Door #1.MP4'
+        assert job['job_name'].startswith('Front Door #1.MP4_run_')
         claimed=repo.claim_job();root=tmp_path/'attempt-1';root.mkdir()
         repo.update_job(claimed['id'],checkpoint={'cv_root':str(root)})
         log=root/'gathering_test/diagnostics.jsonl';log.parent.mkdir()

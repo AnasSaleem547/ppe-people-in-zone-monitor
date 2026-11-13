@@ -1,4 +1,5 @@
 import httpx
+from urllib.parse import quote
 
 
 class APIError(RuntimeError):
@@ -35,4 +36,4 @@ class APIClient:
         return self._request("POST", "/api/jobs", json=payload, headers={"Idempotency-Key": request_key})
 
     def status(self, job_id):
-        return self._request("GET", f"/api/jobs/{job_id}")
+        return self._request("GET", f"/api/jobs/{quote(job_id, safe='')}")
