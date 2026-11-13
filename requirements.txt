@@ -1,0 +1,15 @@
+fastapi==0.135.3
+uvicorn==0.44.0
+python-multipart==0.0.26
+pydantic-settings==2.12.0
+httpx==0.28.1
+streamlit==1.67.0
+cloudinary==1.47.0
+ultralytics==8.4.37
+av==19.0.2
+shapely==2.1.2
+scipy==1.17.1
+lap==0.5.14
+numpy==2.4.4
+opencv-python==4.13.0.92
+# Keep the notebook's PyTorch/device installation; install it explicitly first.
