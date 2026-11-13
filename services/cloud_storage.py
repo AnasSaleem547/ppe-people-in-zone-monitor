@@ -20,7 +20,7 @@ class CloudStorage:
         if not (s.cloudinary_cloud_name and s.cloudinary_api_key and s.cloudinary_api_secret.get_secret_value()):
             raise CloudDeliveryError("Cloudinary credentials are missing from the backend environment.")
         date = datetime.fromtimestamp(created_at, timezone.utc)
-        folder = f"{s.cloudinary_folder}/{s.environment}/{date:%Y/%m}/{job_id}"
+        folder = f"{s.cloudinary_folder}/{date:%Y/%m}/{job_id}"
         public_id = f"{folder}/annotated"
         credentials = dict(cloud_name=s.cloudinary_cloud_name, api_key=s.cloudinary_api_key,
                            api_secret=s.cloudinary_api_secret.get_secret_value())
@@ -30,7 +30,7 @@ class CloudStorage:
                 str(path), resource_type="video", public_id=public_id, asset_folder=folder,
                 overwrite=False, unique_filename=False, eager=eager, eager_async=False,
                 chunk_size=6 * 1024 * 1024, timeout=s.cloudinary_timeout_seconds,
-                tags=["ppe-monitor", s.environment], **credentials,
+                tags=["ppe-monitor"], **credentials,
             )
             # overwrite=False may return an existing asset after a lost response.
             # Explicit preparation also obtains its ready derived delivery URL.

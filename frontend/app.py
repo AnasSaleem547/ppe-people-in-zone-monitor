@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st
 
-from config import Settings
+from config import Settings, BACKEND_URL
 from frontend.annotation import annotate
 from frontend.player import result_player
 from frontend.api_client import APIClient, APIError
@@ -61,7 +61,7 @@ def progress_details(job):
 def main():
     st.set_page_config(page_title="People in Zone Monitor", layout="wide", initial_sidebar_state="expanded")
     settings = Settings()
-    client = APIClient(settings.api_base_url)
+    client = APIClient(BACKEND_URL)
     st.title("People in Zone Monitor")
     st.write("Upload a recording, mark four corners, and check when the people-count rule is met.")
     with st.sidebar:

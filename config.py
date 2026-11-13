@@ -6,14 +6,14 @@ from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parent
+# Streamlit and FastAPI run on the same VM; this is not a server bind address.
+BACKEND_URL = "http://127.0.0.1:8010"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
 
     data_dir: Path = ROOT / "data"
-    api_base_url: str = "http://127.0.0.1:8010"
-    environment: Literal["development", "test", "production"] = "development"
     max_upload_mb: int = Field(default=50, ge=1)
     max_video_minutes: float = Field(default=20, gt=0)
     validation_workers: int = Field(default=1, ge=1, le=4)

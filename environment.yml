@@ -1,7 +1,4 @@
-# Production runtime dependencies only, with exact installed Linux CPU versions.
-# Test tools are separate: requirements-dev.txt. Transitive framework dependencies are required.
 # Create with: conda env create -f environment.yml
-# PyTorch CPU wheels use the official PyTorch index. No credentials included.
 name: ppe-monitor
 channels:
 - conda-forge
