@@ -86,18 +86,19 @@ falls back to the same model and image size on CPU.
 1. Select a video and click **Get first frame**. The transfer must finish before
    the API can return its preview. Decoding only the beginning makes preview
    extraction quick; it does not establish that the entire file is readable.
-2. Click four corners in order, inspect the shaded polygon, and confirm. This
+2. Click four corners in order and inspect the shaded polygon. This
    supports valid concave four-sided polygons as in the notebook. The frontend
    maps actual displayed/preview dimensions to original decoded coordinates;
    the backend applies the notebook's own polygon validator.
-3. Enter N and T, then start processing. A background full-decode check runs while
+3. Enter N and T, review the shaded region, then click **Confirm region & process**. A background full-decode check runs while
    annotation takes place. A pending submission waits for that check; a failure
    stops the job before inference. Validation never rewrites detector input.
 4. Check status manually for any video. Known durations below 30 seconds enable
    seven-second checks while the Streamlit session is active. Video length does
    not predict queue or processing time. Unknown duration uses manual checks.
-5. On success, verify the saved first-frame preview with the submitted polygon.
-   Check **This is the region I marked**, then play the Cloudinary video unmuted.
+5. On success, the video is immediately available. The marked first frame is in
+   **Submitted region (reference)**. The player fits both available width and
+   screen height, preserving the video aspect ratio. Click **Play with sound**.
    Alarm summaries give trigger/end seconds and their condition. The run ID is
    also in the page URL and can be loaded from the sidebar after a browser refresh.
 
@@ -171,7 +172,7 @@ Run the full local suites:
 
 ```bash
 .venv/bin/python -m pytest -q
-node --test tests/annotation.test.mjs
+node --test tests/*.test.mjs
 ```
 
 Tests cover source preservation, strict timer/reset behavior, rendered-frame
@@ -187,3 +188,33 @@ survive application restarts only while the local database and artifacts remain
 available. There is no exactly-once execution claim across crashes or storage loss.
 Keep runtime/version changes deliberate and compare representative videos before
 using a new environment for decisions.
+
+## Filename-based run names and sound controls (2026-11-13 update)
+
+New uploads retain their original filename as metadata. `Front Door.MP4` produces
+public run names such as `front-door-run-0001`; the suffix distinguishes runs
+within the retained database. Public names are stored once and indexed uniquely,
+so maintenance does not recalculate existing links. The original random IDs stay
+internal for artifact isolation and old links continue to work. Files uploaded
+before filenames were retained use `video-run-0001` style names; their original
+filename cannot be recovered from the saved metadata. Names, like jobs, depend
+on keeping this database. Filenames are never used as local filesystem paths.
+
+The custom Streamlit v2 result player has explicit **Play with sound** (unmutes
+and restores full player volume) and **Test sound**. If the video audio stays
+silent in your browser, select **Browser tone (fallback)** then click **Play
+with sound**. It uses browser-generated 880 Hz audio only during the returned
+alarm intervals, pauses during buffering/seek/pause, and mutes the original track
+to avoid double sound. The downloaded/cloud video still contains its own audio.
+Page updates pause playback when tearing down the audio controller; resume with
+Play with sound. No page can override a muted browser tab or device volume.
+
+The reported N=2/T=5 run's local and Cloudinary audio were decoded directly:
+a one-second sample at video second 7 contained an 880 Hz tone around -15 dBFS,
+while samples at seconds 1 and 20 were silent. This rules out a silent delivered
+track on that run; the user's exact browser silence was not reproduced. The
+previous `muted=false` test did not prove speaker output. This update supplies
+explicit controls and an independent browser-tone fallback. Live browser
+verification of this revision was blocked because local browser access was
+disabled in Work settings. Renderer tests exercise native sound enablement,
+interval gating, pause/buffering behavior, cleanup and portrait/landscape sizing.

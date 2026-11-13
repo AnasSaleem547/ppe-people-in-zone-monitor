@@ -90,3 +90,15 @@ A scan of Git-tracked files found no secret value. Two development smoke assets
 were uploaded under separate job IDs; no unrelated assets were changed or deleted.
 No remote repository was configured or pushed. Implementation commits remain in
 the new local `codebase` repository on `feat/fastapi-streamlit`.
+
+## UI revision verification
+
+Current suite: 36 Python tests and 8 JavaScript tests pass. Original counts above
+are historical. Source-preservation tests still pass. New tests first failed for
+filename run naming, redundant result confirmation, database row relocation, and
+a rerender leaving muted fallback playback without sound. These now pass. The
+player renderer is exercised with controlled media/AudioContext objects; these
+checks do not establish physical speaker output. Live UI inspection was blocked
+by Work settings disabling local browser access. No new cloud upload/inference
+was needed for this revision. Existing local and cloud waveform samples in the
+reported run contain the 880 Hz alarm around -15 dBFS at video second 7.

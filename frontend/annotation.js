@@ -14,7 +14,7 @@ export default function({data, parentElement, setStateValue}) {
   const root = parentElement.querySelector('.zone-annotation');
   const canvas = root.querySelector('canvas');
   const reset = root.querySelector('[data-reset]');
-  const confirm = root.querySelector('[data-confirm]');
+
   const note = root.querySelector('[data-note]');
   const ctx = canvas.getContext('2d');
   const image = new Image();
@@ -51,8 +51,8 @@ export default function({data, parentElement, setStateValue}) {
         ctx.fillText(String(i+1), x+8, y+5);
       });
     }
-    confirm.disabled = points.length !== 4 || confirmed;
-    note.textContent = confirmed ? 'Area confirmed. You can now start processing.' : `Click four corners in order, then confirm (${points.length}/4).`;
+
+    note.textContent = points.length === 4 ? 'Region ready. Review N/T below, then confirm and process.' : `Click four corners in order (${points.length}/4).`;
   }
   image.onload = () => {
     if (disposed) return;
@@ -70,12 +70,12 @@ export default function({data, parentElement, setStateValue}) {
     publish();
   };
   reset.onclick = () => { points = []; confirmed = false; draw(); publish(); };
-  confirm.onclick = () => { confirmed = true; draw(); publish(); };
+
   return () => {
     disposed = true;
     image.onload = null;
     canvas.onpointerdown = null;
     reset.onclick = null;
-    confirm.onclick = null;
+
   };
 }

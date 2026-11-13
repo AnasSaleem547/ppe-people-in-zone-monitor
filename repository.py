@@ -1,5 +1,7 @@
 """Small, transactional SQLite upload registry and FIFO job queue."""
 import json
+import re
+import unicodedata
 import sqlite3
 import time
 import uuid
@@ -35,6 +37,23 @@ class Repository:
                 );
                 CREATE INDEX IF NOT EXISTS job_queue ON jobs(status, retry_at, created_at);
             """)
+
+        # One additive migration; legacy UUIDs and cloud paths stay unchanged.
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if "public_id" not in {r[1] for r in db.execute("PRAGMA table_info(jobs)")}:
+                db.execute("ALTER TABLE jobs ADD COLUMN public_id TEXT")
+            rows = db.execute("SELECT jobs.id,jobs.rowid,uploads.metadata FROM jobs JOIN uploads ON jobs.upload_id=uploads.id WHERE public_id IS NULL").fetchall()
+            for row in rows:
+                name = json.loads(row[2]).get("filename", "Video")
+                db.execute("UPDATE jobs SET public_id=? WHERE id=?", (self._run_name(name,row[1]),row[0]))
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS public_job_name ON jobs(public_id)")
+
+    @staticmethod
+    def _run_name(name, number):
+        stem = Path(name).stem
+        slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode().lower()).strip("-")[:60] or "video"
+        return f"{slug}-run-{number:04d}"
 
     @contextmanager
     def connection(self):
@@ -108,11 +127,21 @@ class Repository:
             status = "queued" if upload["status"] == "valid" else "waiting_validation"
             db.execute("INSERT INTO jobs(id,request_key,upload_id,request,status,phase,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
                        (job_id, request_key, request["upload_id"], serialized, status, status, now, now))
+            number = db.execute("SELECT rowid FROM jobs WHERE id=?", (job_id,)).fetchone()[0]
+            name = self._run_name(upload["metadata"].get("filename", "Video"), number)
+            while db.execute("SELECT 1 FROM jobs WHERE public_id=?", (name,)).fetchone():
+                number += 1
+                name = self._run_name(upload["metadata"].get("filename", "Video"), number)
+            db.execute("UPDATE jobs SET public_id=? WHERE id=?", (name, job_id))
             return self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
+
+    def public_identity(self, job):
+        upload = self.get_upload(job["upload_id"])
+        return job["public_id"], upload["metadata"].get("filename", "Video")
 
     def get_job(self, job_id):
         with self.connection() as db:
-            return self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
+            return self.decode(db.execute("SELECT * FROM jobs WHERE id=? OR public_id=?", (job_id,job_id)).fetchone())
 
     def get_job_by_key(self, request_key):
         with self.connection() as db:

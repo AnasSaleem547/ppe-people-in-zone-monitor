@@ -5,13 +5,13 @@ import streamlit as st
 COMPONENT = st.components.v2.component(
     "people_zone_annotation",
     html="""<div class="zone-annotation">
-      <p data-note>Click four corners in order, then confirm.</p>
+      <p data-note>Click four corners in order. Review the region and settings below.</p>
       <canvas aria-label="Select monitoring region"></canvas>
       <div class="actions"><button type="button" data-reset>Reset area</button>
-      <button type="button" data-confirm disabled>Confirm area</button></div>
+</div>
     </div>""",
     css=""".zone-annotation {font-family:var(--st-font); color:var(--st-text-color);}
-      canvas {max-width:100%; height:auto; display:block; cursor:crosshair; touch-action:none;}
+      canvas {max-width:100%; max-height:60vh; width:auto; height:auto; object-fit:contain; display:block; cursor:crosshair; touch-action:none;}
       .actions {display:flex; gap:12px; margin-top:12px;}
       button {font:inherit; padding:8px 14px; border:1px solid var(--st-border-color);
         border-radius:6px; background:var(--st-secondary-background-color);color:var(--st-text-color);cursor:pointer;}

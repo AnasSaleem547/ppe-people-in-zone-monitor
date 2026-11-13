@@ -27,6 +27,7 @@ async def upload_video(request: Request, file: UploadFile):
                 target.write(chunk)
         preview = await run_in_threadpool(inspect_video, path)
         jpeg = preview.pop("jpeg")
+        preview["filename"] = Path((file.filename or "video").replace("\\", "/")).name[:240]
         preview_path.write_bytes(jpeg)
         request.app.state.repository.add_upload(upload_id, str(path), str(preview_path), preview)
     except (ValueError, HTTPException) as exc:
@@ -40,4 +41,4 @@ async def upload_video(request: Request, file: UploadFile):
         await file.close()
     request.app.state.validation.submit(upload_id)
     return dict(upload_id=upload_id, first_frame=image_data_uri(jpeg),
-                validation_status="pending", **{k: v for k, v in preview.items() if k != "first_timestamp"})
+                validation_status="pending", **{k: v for k, v in preview.items() if k not in ("first_timestamp", "filename")})

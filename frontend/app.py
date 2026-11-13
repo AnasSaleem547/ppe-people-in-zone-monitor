@@ -12,6 +12,7 @@ import streamlit as st
 
 from config import Settings
 from frontend.annotation import annotate
+from frontend.player import result_player
 from frontend.api_client import APIClient, APIError
 from frontend.state import TERMINAL, polling_interval, submission_key
 
@@ -21,14 +22,13 @@ def show_image(data_uri, **kwargs):
 
 
 def display_result(job):
-    st.subheader("Verify your marked region")
-    show_image(job["region_preview"], caption="The first-frame preview with the region submitted for this run.")
+    st.subheader(job.get("video_name", "Processed video"))
     result = job["result"]
+    result_player(job)
+    st.link_button("Open video", result["video_url"])
+    with st.expander("Submitted region (reference)"):
+        show_image(job["region_preview"], caption="Region submitted before processing.")
     st.metric("Alarm episodes in the output video", result["alarm_count"])
-    if st.checkbox("This is the region I marked", key="verified_" + job["job_id"]):
-        st.video(result["video_url"], autoplay=False, muted=False)
-        st.caption("Press Play and keep sound unmuted to hear the alarms.")
-        st.link_button("Open video", result["video_url"])
     for alarm in result["alarms"]:
         st.markdown(f"**Alarm {alarm['index']}** — triggered at {alarm['start_seconds']:.3f}s; "
                     f"ended at {alarm['end_seconds']:.3f}s ({alarm['duration_seconds']:.3f}s).")
@@ -48,7 +48,7 @@ def main():
     st.caption("The timer follows estimated occupancy. A new alarm requires direct observations; it resets when estimated occupancy drops below N.")
     with st.sidebar:
         st.subheader("Resume a run")
-        resume = st.text_input("Job ID", value=st.query_params.get("job", ""))
+        resume = st.text_input("Run name or existing job ID", value=st.query_params.get("job", ""))
         if st.button("Load run", disabled=not resume):
             try:
                 st.session_state["job"] = client.status(resume.strip())
@@ -79,8 +79,9 @@ def main():
         n = left.number_input("N — minimum people inside the region", min_value=1, value=2, step=1)
         seconds = right.number_input("T — count must stay at least N for MORE THAN these video seconds",
                                      min_value=.001, value=5., step=.5, format="%.3f")
+        st.caption(f"Review the shaded region above: at least {int(n)} people for more than {seconds:g} seconds. Confirm below to submit.")
         active = st.session_state.get("job", {}).get("status") not in (None, *TERMINAL)
-        if st.button("Start processing", type="primary", disabled=not (selection and selection.get("confirmed")) or active):
+        if st.button("Confirm region & process", type="primary", disabled=not (selection and len(selection.get("points", [])) == 4) or active):
             body = dict(upload_id=upload["upload_id"], n_people=int(n), threshold_seconds=float(seconds), polygon=selection["points"])
             try:
                 job = client.submit(body, submission_key(st.session_state, body))
@@ -98,7 +99,7 @@ def main():
     if not job:
         return
     st.subheader("3. Processing status")
-    st.code(job["job_id"], language=None)
+    st.write("Run: " + job["job_id"])
     interval = polling_interval(job.get("duration_seconds"), job["status"], settings.short_video_seconds, settings.status_poll_seconds)
 
     @st.fragment(run_every=interval)

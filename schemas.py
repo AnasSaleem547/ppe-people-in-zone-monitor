@@ -30,6 +30,7 @@ class UploadResponse(BaseModel):
 
 
 class JobResponse(BaseModel):
+    video_name: str = "Video"
     job_id: str
     status: str
     phase: str
