@@ -129,3 +129,25 @@ zero jobs and zero uploads. Old run links now return 404. Media files and cloud
 assets were retained. API/frontend health returned 200 after restart; the worker
 reported ready. Effective runtime limits checked as 50 MB and 1,200 seconds.
 SQLite 3.51.1 is also pinned in the environment file alongside Python/pip/FFmpeg.
+
+## Manual status updates and production dependency audit
+
+Status GET requests are now made only when the user clicks Check status or
+Load run. Opening a saved URL, normal UI reruns and submission rendering do not
+fetch status automatically. Streamlit's own UI connection and the worker's
+local SQLite queue checks are separate from these status API requests.
+
+The corrected request-count test reproduces the old saved-URL auto-fetch, and
+passes against the revised UI. Full suite: 44 Python tests passed in 9.64 seconds;
+5 JavaScript tests passed; pip check found no broken installed requirements.
+An earlier suite invocation stalled and was stopped; the full fresh run above
+completed. No runtime/model dependency was changed in the working environment.
+
+The production environment now pins 71 runtime packages. Removed pytest,
+iniconfig, pluggy and pygments; test tools remain in requirements-dev.txt.
+The dependency audit test checks every remaining installed package's declared
+non-extra dependencies and version constraints against the pinned list. Framework
+requirements such as Streamlit's chart/map libraries remain installer requirements
+although this app does not use those features. Removing their manifest lines alone
+would not prevent installation. No fresh Conda environment/VM was created, so a
+clean installation is not claimed as tested. Python/pip/FFmpeg/SQLite pins remain.

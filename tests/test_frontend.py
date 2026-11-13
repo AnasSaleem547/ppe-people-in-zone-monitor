@@ -28,15 +28,6 @@ def test_api_client_reports_validation_errors_in_plain_text():
         client.submit({}, "key")
 
 
-def test_polling_is_only_enabled_for_known_short_active_videos():
-    from frontend.state import polling_interval
-    assert polling_interval(29.9, "queued") == 7
-    assert polling_interval(30, "processing") is None
-    assert polling_interval(None, "processing") is None
-    assert polling_interval(10, "succeeded") is None
-    assert polling_interval(10, "failed") is None
-
-
 def test_retry_key_survives_reruns_but_changes_for_new_inputs():
     from frontend.state import submission_key
     state = {}

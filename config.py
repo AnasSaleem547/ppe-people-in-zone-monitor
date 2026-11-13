@@ -21,8 +21,6 @@ class Settings(BaseSettings):
     max_job_attempts: int = Field(default=3, ge=1, le=10)
     retry_delay_seconds: float = Field(default=10, ge=0)
     upload_retention_hours: int = Field(default=24, ge=1)
-    short_video_seconds: float = 30
-    status_poll_seconds: int = 7
     ffmpeg_path: str = "ffmpeg"
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""

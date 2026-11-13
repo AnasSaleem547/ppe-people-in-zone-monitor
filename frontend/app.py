@@ -14,7 +14,7 @@ from config import Settings
 from frontend.annotation import annotate
 from frontend.player import result_player
 from frontend.api_client import APIClient, APIError
-from frontend.state import TERMINAL, polling_interval, submission_key
+from frontend.state import TERMINAL, submission_key
 
 
 def show_image(data_uri, **kwargs):
@@ -109,40 +109,24 @@ def main():
             except APIError as exc:
                 st.error(str(exc))
 
-    if "job" not in st.session_state and st.query_params.get("job"):
-        try:
-            st.session_state["job"] = client.status(st.query_params["job"])
-        except APIError as exc:
-            st.error(str(exc))
     job = st.session_state.get("job")
     if not job:
         return
     st.subheader("3. Processing status")
     processing_reference(job)
-    interval = polling_interval(job.get("duration_seconds"), job["status"], settings.short_video_seconds, settings.status_poll_seconds)
-
-    @st.fragment(run_every=interval)
-    def status_panel():
-        st.button("Check status", key="manual_status")
+    if st.button("Check status", key="manual_status"):
         try:
-            fresh = client.status(job["job_id"])
+            st.session_state["job"] = client.status(job["job_id"])
         except APIError as exc:
             st.error(str(exc))
-            return
-        st.session_state["job"] = fresh
-        progress_details(fresh)
-        if fresh.get("queue_position"):
-            st.caption(f"Queue position: {fresh['queue_position']}")
-        if fresh["error"]:
-            st.error(fresh["error"])
-        if interval:
-            st.caption(f"Checks automatically every {interval} seconds while this page is active.")
-        elif fresh["status"] not in TERMINAL:
-            st.caption("Use Check status to request an update.")
-        if fresh["status"] in TERMINAL and job["status"] not in TERMINAL:
-            st.rerun()
-
-    status_panel()
+    job = st.session_state["job"]
+    progress_details(job)
+    if job.get("queue_position"):
+        st.caption(f"Queue position: {job['queue_position']}")
+    if job.get("error"):
+        st.error(job["error"])
+    if job["status"] not in TERMINAL:
+        st.caption("Click Check status to fetch the latest update.")
     job = st.session_state["job"]
     if job["status"] == "succeeded":
         display_result(job)

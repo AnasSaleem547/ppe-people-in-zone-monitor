@@ -36,8 +36,14 @@ conda activate ppe-monitor
 ```
 
 Then use `python` instead of `.venv/bin/python` in the commands above.
-`environment.yml` pins Python 3.13.12, pip 25.3, upstream FFmpeg 8.0.1 and 75
-Python packages from the actual installed dependency graph, including CPU
+`environment.yml` excludes test tools (`pytest`, `pluggy`, `iniconfig`,
+`pygments`); those belong to the development environment. Required indirect
+libraries remain because Streamlit/Ultralytics declare them, even for framework
+features this app does not exercise. Removing their explicit pins would not
+prevent the package installer from installing them.
+
+`environment.yml` pins Python 3.13.12, pip 25.3, upstream FFmpeg 8.0.1 and 71
+Python runtime packages from the actual installed dependency graph, including CPU
 PyTorch 2.11.0+cpu and torchvision 0.26.0+cpu. CPU wheels use the official
 PyTorch wheel index. It describes this Linux CPU runtime; it is not a tested
 CUDA environment. YAML parsing and comparison to installed package metadata
@@ -71,7 +77,6 @@ All settings are declared in `config.py` (`Settings`):
 - `validation_workers = 1`, `worker_poll_seconds = 1`.
 - `upload_retention_hours = 24`: limits new submissions, not automatic deletion.
 - `max_job_attempts = 3`, `retry_delay_seconds = 10`: cloud delivery retry settings.
-- `short_video_seconds = 30`, `status_poll_seconds = 7`.
 - `ffmpeg_path`, Cloudinary credentials/folder/environment/timeouts, model/device,
   and notebook-exposed CV settings.
 
@@ -91,10 +96,9 @@ secret in frontend code, API responses or logs.
 3. Background validation runs while the user annotates. Jobs wait for it to
    succeed; failures stop inference. Original uploaded bytes feed CV processing.
 4. **Processing status** shows the exact uploaded filename and submitted region,
-   followed by dynamic progress. Refresh manually for any recording. Videos
-   with known duration below 30 seconds check every seven seconds while the
-   Streamlit session is active. Longer or unknown-duration videos use manual
-   checks. Length is not an estimate of processing time.
+   followed by dynamic progress. Click **Check status** to fetch an update for any recording. There are no
+   automatic status GET requests, including on page load or other UI reruns.
+   A saved URL fills the sidebar ID; click **Load run** to fetch it.
 5. Progress shows analysed frames and CV percentage based on the fully decoded
    input count. It reads the notebook's existing buffered diagnostics, so it
    can lag slightly. It is not a promise of instantaneous tracking. A 100% CV
