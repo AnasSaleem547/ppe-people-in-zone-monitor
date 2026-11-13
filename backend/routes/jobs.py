@@ -6,11 +6,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
-from repository import Conflict
-from schemas import JobRequest, JobResponse
-from services.cv.media_utils import validate_polygon
-from services.media import image_data_uri, region_preview
-from services.progress import job_progress
+from backend.database.repository import Conflict
+from backend.schemas.jobs import JobRequest, JobResponse
+from backend.services.cv.media_utils import validate_polygon
+from backend.services.media import image_data_uri, region_preview
+from backend.services.progress import job_progress
 
 router = APIRouter(prefix="/api", tags=["Jobs"])
 

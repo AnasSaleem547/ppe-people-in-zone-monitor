@@ -4,8 +4,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from schemas import UploadResponse
-from services.media import image_data_uri, inspect_video
+from backend.schemas.jobs import UploadResponse
+from backend.services.media import image_data_uri, inspect_video
 
 router = APIRouter(prefix="/api", tags=["Uploads"])
 

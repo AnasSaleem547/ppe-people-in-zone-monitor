@@ -5,8 +5,9 @@ import os
 import cv2
 import numpy as np
 
-from config import Settings
+from backend.core.config import Settings
 from .cv.media_utils import padded_crop
+from .model_assets import ensure_model
 
 
 class PipelineRunner:
@@ -25,8 +26,7 @@ class PipelineRunner:
         device = self.settings.device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        if not self.settings.model_path.is_file():
-            raise FileNotFoundError(f"Model weights not found: {self.settings.model_path}")
+        ensure_model(self.settings)
         if self.detector is None or self.detector.image_size != size:
             gc.collect()
             if torch.cuda.is_available():

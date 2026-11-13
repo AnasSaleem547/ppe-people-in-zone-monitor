@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st
 
-from config import Settings, BACKEND_URL
+from backend.core.config import Settings, BACKEND_URL
 from frontend.annotation import annotate
 from frontend.player import result_player
 from frontend.api_client import APIClient, APIError

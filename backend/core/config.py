@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 # Streamlit and FastAPI run on the same VM; this is not a server bind address.
 BACKEND_URL = "http://127.0.0.1:8010"
 
@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     cloudinary_api_secret: SecretStr = SecretStr("")
     cloudinary_folder: str = "ppe-monitor"
     cloudinary_timeout_seconds: int = Field(default=120, ge=1)
-    model_path: Path = ROOT.parent / "yolo26m.pt"
+    model_name: Literal["yolo26m.pt"] = "yolo26m.pt"
+    model_path: Path = ROOT / "models" / "yolo26m.pt"
     device: Literal["auto", "cpu", "cuda"] = "auto"
     image_size: int = Field(default=640, ge=32)
     full_frame_context: bool = False

@@ -80,3 +80,5 @@ dependencies:
   - uvicorn==0.52.0
   - watchdog==7.1.0
   - websockets==17.4
+variables:
+  MODEL_NAME: yolo26m.pt

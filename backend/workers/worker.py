@@ -4,13 +4,14 @@ import signal
 import time
 from pathlib import Path
 
-from config import Settings
-from repository import Repository
-from services.alarms import add_alarm_audio, build_intervals
-from services.cloud_storage import CloudDeliveryError, CloudStorage
-from services.locks import ProcessLock
-from services.media import video_endpoint
-from services.pipeline import PipelineRunner
+from backend.core.config import Settings
+from backend.database.repository import Repository
+from backend.services.alarms import add_alarm_audio, build_intervals
+from backend.services.cloud_storage import CloudDeliveryError, CloudStorage
+from backend.services.locks import ProcessLock
+from backend.services.media import video_endpoint
+from backend.services.pipeline import PipelineRunner
+from backend.services.model_assets import ensure_model
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings()
     with ProcessLock(settings.data_dir / "worker.lock"):
+        ensure_model(settings)
         worker = Worker(settings)
         worker.repository.recover_jobs()
         stopped = False
