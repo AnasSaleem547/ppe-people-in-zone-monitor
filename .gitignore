@@ -9,3 +9,4 @@ data/
 *.log
 test-results/
 playwright-report/
+models/
