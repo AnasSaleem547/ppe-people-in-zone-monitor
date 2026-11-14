@@ -1,6 +1,8 @@
 import httpx
 from urllib.parse import quote
 
+from backend.core import config as cfg
+
 
 class APIError(RuntimeError):
     pass
@@ -14,7 +16,8 @@ class APIClient:
     def _request(self, method, path, **kwargs):
         try:
             with httpx.Client(base_url=self.base_url, transport=self.transport,
-                              timeout=httpx.Timeout(300, connect=5)) as client:
+                              timeout=httpx.Timeout(cfg.FRONTEND_API_REQUEST_TIMEOUT_SECONDS,
+                                                    connect=cfg.FRONTEND_API_CONNECT_TIMEOUT_SECONDS)) as client:
                 response = client.request(method, path, **kwargs)
             if response.is_error:
                 try:

@@ -2,13 +2,15 @@
 import json
 from pathlib import Path
 
+from backend.core import config as cfg
+
 
 def _last_record(path):
     try:
         with path.open('rb') as log:
             log.seek(0, 2)
             end = log.tell()
-            size = min(65536, end)
+            size = min(cfg.PROGRESS_LOG_INITIAL_READ_BYTES, cfg.PROGRESS_LOG_MAX_READ_BYTES, end)
             while size:
                 log.seek(end-size)
                 lines = log.read(size).split(b'\n')
@@ -20,9 +22,9 @@ def _last_record(path):
                             return row
                     except (ValueError, AttributeError, UnicodeError):
                         continue
-                if size == end or size >= 8*1024*1024:
+                if size == end or size >= cfg.PROGRESS_LOG_MAX_READ_BYTES:
                     break
-                size = min(end, size*2)
+                size = min(end, cfg.PROGRESS_LOG_MAX_READ_BYTES, size*cfg.PROGRESS_LOG_READ_GROWTH_FACTOR)
     except OSError:
         pass
     return None
@@ -45,5 +47,5 @@ def job_progress(job, upload):
     if job['status'] == 'succeeded' and total:
         frames = total
     return dict(frames_analyzed=frames, total_frames=total,
-                cv_percent=round(min(100., 100*frames/total), 1) if total else None,
+                cv_percent=round(min(100., 100*frames/total), cfg.PROGRESS_PERCENT_DECIMALS) if total else None,
                 video_seconds=seconds)

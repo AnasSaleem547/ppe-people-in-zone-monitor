@@ -6,6 +6,7 @@ from fractions import Fraction
 from pathlib import Path
 
 import av
+from backend.core import config as cfg
 
 from .media import video_endpoint
 
@@ -19,6 +20,13 @@ def build_intervals(report, endpoint):
     condition = (f"Estimated occupancy stayed at least {n} for more than {seconds:g} video seconds; "
                  f"at least {n} people were directly observed at trigger. "
                  f"Alarm remains active until estimated occupancy falls below {n}.")
+    policy = report.get("zone_policy")
+    if policy:
+        if policy["mode"] == "anchor":
+            anchor = policy.get("anchor", "center").replace("_", " ")
+            condition += f" Zone membership uses the box {anchor}, with bounded boundary uncertainty."
+        else:
+            condition += f" Zone membership requires {policy.get('overlap_fraction', cfg.LEGACY_ZONE_OVERLAP_FRACTION):g} of box area inside."
     for index, event in enumerate(report["events"], 1):
         start = float(event["seconds"])
         reset = next((r for r in resets if r > start), None)
@@ -38,11 +46,11 @@ def add_alarm_audio(source, target, intervals, endpoint, ffmpeg_path="ffmpeg"):
     target.parent.mkdir(parents=True, exist_ok=True)
     # Per-sample gating, rather than wall-clock sound or one beep per frame.
     gates = "+".join(f"(gte(t,{a['start_seconds']:.9f})*lt(t,{a['end_seconds']:.9f}))" for a in intervals) or "0"
-    expression = f"aevalsrc=exprs='0.25*sin(2*PI*880*t)*({gates})':s=48000:d={endpoint:.9f}[alarm]"
+    expression = f"aevalsrc=exprs='{cfg.ALARM_AMPLITUDE}*sin(2*PI*{cfg.ALARM_FREQUENCY_HZ}*t)*({gates})':s={cfg.ALARM_SAMPLE_RATE}:d={endpoint:.9f}[alarm]"
     temporary = target.with_name(target.stem + ".pending.mp4")
     with tempfile.TemporaryDirectory(dir=target.parent) as staging:
         media_source = source
-        if endpoint > video_endpoint(source) + .000001:
+        if endpoint > video_endpoint(source) + cfg.ALARM_ENDPOINT_EPSILON_SECONDS:
             media_source = Path(staging) / "video.mp4"
             _hold_final_frame(source, media_source, endpoint)
         script = Path(staging) / "alarm.ffscript"
@@ -51,8 +59,8 @@ def add_alarm_audio(source, target, intervals, endpoint, ffmpeg_path="ffmpeg"):
             subprocess.run([ffmpeg_path, "-hide_banner", "-loglevel", "error", "-y",
                             "-i", str(media_source), "-filter_complex_script", str(script),
                             "-map", "0:v:0", "-map", "[alarm]", "-c:v", "copy",
-                            "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(temporary)],
-                           check=True, capture_output=True, timeout=max(120, endpoint * 2))
+                            "-c:a", cfg.ALARM_AUDIO_CODEC, "-b:a", cfg.ALARM_AUDIO_BITRATE, "-movflags", "+faststart", str(temporary)],
+                           check=True, capture_output=True, timeout=max(cfg.ALARM_MIN_TIMEOUT_SECONDS, endpoint * cfg.ALARM_TIMEOUT_DURATION_MULTIPLIER))
             temporary.replace(target)
         except (subprocess.SubprocessError, OSError) as exc:
             temporary.unlink(missing_ok=True)

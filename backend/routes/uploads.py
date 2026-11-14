@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from backend.core import config as cfg
 from backend.schemas.jobs import UploadResponse
 from backend.services.media import image_data_uri, inspect_video
 
@@ -20,7 +21,7 @@ async def upload_video(request: Request, file: UploadFile):
     size = 0
     try:
         with path.open("wb") as target:
-            while chunk := await file.read(1024 * 1024):
+            while chunk := await file.read(cfg.UPLOAD_READ_CHUNK_BYTES):
                 size += len(chunk)
                 if size > settings.max_upload_mb * 1024 * 1024:
                     raise HTTPException(413, f"Video exceeds the {settings.max_upload_mb} MB upload limit.")

@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 from contextlib import contextmanager
 from pathlib import Path
 
+from backend.core import config as cfg
+
 
 class Conflict(ValueError):
     pass
@@ -60,13 +62,13 @@ class Repository:
         date = datetime.fromtimestamp(created_at, ZoneInfo("Asia/Karachi")).strftime("%d/%m/%Y")
         prefix = f"{filename}_run_{date}_"
         number = 1
-        while db.execute("SELECT 1 FROM jobs WHERE public_id=?", (f"{prefix}{number:03d}",)).fetchone():
+        while db.execute("SELECT 1 FROM jobs WHERE public_id=?", (f"{prefix}{number:0{cfg.JOB_PUBLIC_RUN_NUMBER_WIDTH}d}",)).fetchone():
             number += 1
-        return f"{prefix}{number:03d}"
+        return f"{prefix}{number:0{cfg.JOB_PUBLIC_RUN_NUMBER_WIDTH}d}"
 
     @contextmanager
     def connection(self):
-        db = sqlite3.connect(self.path, timeout=10)
+        db = sqlite3.connect(self.path, timeout=cfg.DATABASE_CONNECT_TIMEOUT_SECONDS)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA foreign_keys=ON")
         try:
@@ -118,8 +120,9 @@ class Repository:
                        ("queued" if valid else "failed", "queued" if valid else "validation",
                         error, time.time(), upload_id))
 
-    def create_job(self, request, request_key):
+    def create_job(self, request, request_key, zone_policy=None):
         serialized = json.dumps(request, sort_keys=True, separators=(",", ":"))
+        checkpoint = json.dumps({"zone_policy": zone_policy} if zone_policy is not None else {})
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             existing = self.decode(db.execute("SELECT * FROM jobs WHERE request_key=?", (request_key,)).fetchone())
@@ -134,8 +137,8 @@ class Repository:
                 raise ValueError(upload["error"] or "Video validation failed.")
             job_id, now = uuid.uuid4().hex, time.time()
             status = "queued" if upload["status"] == "valid" else "waiting_validation"
-            db.execute("INSERT INTO jobs(id,request_key,upload_id,request,status,phase,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
-                       (job_id, request_key, request["upload_id"], serialized, status, status, now, now))
+            db.execute("INSERT INTO jobs(id,request_key,upload_id,request,status,phase,checkpoint,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                       (job_id, request_key, request["upload_id"], serialized, status, status, checkpoint, now, now))
             name = self._allocate_name(db, upload["metadata"].get("filename", "Video"), now)
             db.execute("UPDATE jobs SET public_id=? WHERE id=?", (name, job_id))
             return self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
