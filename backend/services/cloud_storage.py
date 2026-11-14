@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 import cloudinary.uploader
 import httpx
 
+from backend.core import config as cfg
+
 
 class CloudDeliveryError(RuntimeError):
     pass
@@ -29,7 +31,7 @@ class CloudStorage:
             response = cloudinary.uploader.upload_large(
                 str(path), resource_type="video", public_id=public_id, asset_folder=folder,
                 overwrite=False, unique_filename=False, eager=eager, eager_async=False,
-                chunk_size=6 * 1024 * 1024, timeout=s.cloudinary_timeout_seconds,
+                chunk_size=cfg.CLOUD_UPLOAD_CHUNK_BYTES, timeout=s.cloudinary_timeout_seconds,
                 tags=["ppe-monitor"], **credentials,
             )
             # overwrite=False may return an existing asset after a lost response.

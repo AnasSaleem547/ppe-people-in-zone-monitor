@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 from backend.core.config import Settings
+from backend.core import config as cfg
 from backend.database.repository import Repository
 from backend.services.alarms import add_alarm_audio, build_intervals
 from backend.services.cloud_storage import CloudDeliveryError, CloudStorage
@@ -39,7 +40,8 @@ class Worker:
                 checkpoint["cv_root"] = str(attempt_root)
                 repo.update_job(job_id, checkpoint=checkpoint)
                 report = self.pipeline.run(upload["file_path"], body["polygon"], body["n_people"],
-                                           body["threshold_seconds"], attempt_root)
+                                           body["threshold_seconds"], attempt_root,
+                                           zone_policy=checkpoint.get("zone_policy") or dict(mode="box_overlap",overlap_fraction=cfg.LEGACY_ZONE_OVERLAP_FRACTION))
                 if report["status"] != "decoder_reached_end":
                     raise RuntimeError("The CV pipeline did not finish decoding the recording.")
                 checkpoint["report"] = report
@@ -59,6 +61,7 @@ class Worker:
             result = dict(**delivery, alarm_count=len(intervals), alarms=intervals,
                           n_people=report["N"], threshold_seconds=report["T"], polygon=report["polygon"],
                           overlap_fraction=report["overlap_fraction"], duration_seconds=endpoint,
+                          zone_policy=report.get("zone_policy") or checkpoint.get("zone_policy") or dict(mode="box_overlap",overlap_fraction=report["overlap_fraction"]),
                           timer_policy="estimated_continuity_confirm_alarm_with_direct_detections")
             repo.update_job(job_id, status="succeeded", phase="complete", result=result, error=None)
         except CloudDeliveryError as exc:

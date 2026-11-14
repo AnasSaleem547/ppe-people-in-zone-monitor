@@ -2,13 +2,15 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, field_validator
 
+from backend.core import config as cfg
+
 
 class JobRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    upload_id: str = Field(min_length=1, max_length=128)
-    n_people: int = Field(strict=True, ge=1)
-    threshold_seconds: FiniteFloat = Field(gt=0)
-    polygon: list[tuple[FiniteFloat, FiniteFloat]] = Field(min_length=4, max_length=4)
+    upload_id: str = Field(min_length=cfg.API_ID_MIN_LENGTH, max_length=cfg.API_ID_MAX_LENGTH)
+    n_people: int = Field(strict=True, ge=cfg.JOB_MIN_PEOPLE)
+    threshold_seconds: FiniteFloat = Field(gt=cfg.JOB_MIN_THRESHOLD_SECONDS)
+    polygon: list[tuple[FiniteFloat, FiniteFloat]] = Field(min_length=cfg.JOB_POLYGON_POINT_COUNT, max_length=cfg.JOB_POLYGON_POINT_COUNT)
 
     @field_validator("threshold_seconds", mode="before")
     @classmethod
@@ -30,6 +32,7 @@ class UploadResponse(BaseModel):
 
 
 class JobResponse(BaseModel):
+    zone_policy: dict = Field(default_factory=dict)
     job_name: str = "Video"
     progress: dict = Field(default_factory=dict)
     video_name: str = "Video"

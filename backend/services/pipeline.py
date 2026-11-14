@@ -1,4 +1,4 @@
-"""Translate web inputs to cells 2, 12 and 13 without changing CV logic."""
+"""Translate accepted inputs and the saved zone policy to the CV runner."""
 import gc
 import os
 
@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 from backend.core.config import Settings
+from backend.core import config as cfg
 from .cv.media_utils import padded_crop
 from .model_assets import ensure_model
 
@@ -19,8 +20,8 @@ class PipelineRunner:
         import torch
         from .cv.live_pipeline import YoloDetector, context_image_size
 
-        torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
-        cv2.setNumThreads(1)
+        torch.set_num_threads(max(1, min(cfg.CPU_MAX_THREADS, os.cpu_count() or 1)))
+        cv2.setNumThreads(cfg.OPENCV_THREADS)
         size = (context_image_size(self.settings.image_size, width, height, crop)
                 if self.settings.full_frame_context else self.settings.image_size)
         device = self.settings.device
@@ -43,7 +44,7 @@ class PipelineRunner:
             self.detector = YoloDetector(str(self.settings.model_path), "cpu", size)
             self.detector.predict(dummy)
 
-    def run(self, path, polygon, n, seconds, output_root):
+    def run(self, path, polygon, n, seconds, output_root, zone_policy=None):
         import av
         from .cv.live_pipeline import process
 
@@ -56,12 +57,13 @@ class PipelineRunner:
             self._prepare_detector(crop, width, height)
         report = process(
             path, polygon, n, seconds, self.detector, output_root,
-            overlap=self.settings.overlap_fraction, crop=crop,
+            overlap=(zone_policy or self.settings.zone_policy).get("overlap_fraction", self.settings.overlap_fraction), crop=crop,
+            zone_policy=zone_policy or self.settings.zone_policy,
             max_hidden_seconds=self.settings.max_hidden_seconds,
             max_image_seconds=self.settings.max_image_seconds,
             max_extent_seconds=self.settings.max_body_reference_seconds,
-            write_video=True, max_frame_gap=self.settings.max_frame_gap_seconds,
-            evidence_mode=True, readable_labels=True,
-            full_frame_context=self.settings.full_frame_context, stable_ids=True,
+            write_video=cfg.PIPELINE_WRITE_VIDEO, max_frame_gap=self.settings.max_frame_gap_seconds,
+            evidence_mode=cfg.PIPELINE_EVIDENCE_MODE, readable_labels=cfg.PIPELINE_READABLE_LABELS,
+            full_frame_context=self.settings.full_frame_context, stable_ids=cfg.PIPELINE_STABLE_IDS,
         )
         return report

@@ -7,6 +7,7 @@ from pathlib import Path
 import av
 import cv2
 import numpy as np
+from backend.core import config as cfg
 
 
 def image_data_uri(jpeg: bytes) -> str:
@@ -19,13 +20,13 @@ def inspect_video(path):
             if not video.streams.video:
                 raise ValueError("The file has no video stream.")
             stream = video.streams.video[0]
-            stream.codec_context.thread_count = 2
+            stream.codec_context.thread_count = cfg.VIDEO_DECODE_THREADS
             first = next(video.decode(stream), None)
             if first is None or first.time is None:
                 raise ValueError("No readable starting video frame with a timestamp.")
             image = first.to_ndarray(format="bgr24")
             height, width = image.shape[:2]
-            scale = min(1., 960 / width)
+            scale = min(1., cfg.PREVIEW_MAX_WIDTH / width)
             preview = cv2.resize(image, (round(width * scale), round(height * scale)))
             ok, encoded = cv2.imencode(".jpg", preview)
             if not ok:
@@ -50,8 +51,8 @@ def validate_video(path, max_frame_gap, max_duration_seconds=None):
             if not video.streams.video:
                 raise ValueError("No video stream.")
             stream = video.streams.video[0]
-            stream.codec_context.thread_count = 2
-            nominal_spacing = Fraction(1, 1) / (stream.average_rate or 30)
+            stream.codec_context.thread_count = cfg.VIDEO_DECODE_THREADS
+            nominal_spacing = Fraction(1, 1) / (stream.average_rate or cfg.MEDIA_FALLBACK_FPS)
             for frame in video.decode(stream):
                 if frame.pts is None or frame.is_corrupt:
                     raise ValueError("Corrupt video frame or missing timestamp.")
@@ -87,7 +88,7 @@ def region_preview(jpeg, polygon, original_width, original_height):
     points = np.asarray(polygon, dtype=float).copy()
     points[:, 0] *= image.shape[1] / original_width
     points[:, 1] *= image.shape[0] / original_height
-    cv2.polylines(image, [np.rint(points).astype(np.int32)], True, (20, 230, 240), 2, cv2.LINE_AA)
+    cv2.polylines(image, [np.rint(points).astype(np.int32)], True, cfg.PREVIEW_REGION_COLOR, cfg.PREVIEW_REGION_THICKNESS, cv2.LINE_AA)
     ok, encoded = cv2.imencode(".jpg", image)
     if not ok:
         raise ValueError("Could not encode the marked region.")
@@ -107,5 +108,5 @@ def video_endpoint(path):
                 duration = float(frame.duration * frame.time_base)
         if last is None:
             raise ValueError("No output video frames.")
-        spacing = duration or (last - previous if previous is not None else float(1 / (stream.average_rate or 30)))
+        spacing = duration or (last - previous if previous is not None else float(1 / (stream.average_rate or cfg.MEDIA_FALLBACK_FPS)))
         return last + spacing

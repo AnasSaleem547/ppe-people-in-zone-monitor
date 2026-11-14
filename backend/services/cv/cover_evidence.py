@@ -6,36 +6,37 @@ shake can fool this check. A frozen image cannot establish physical occupancy.
 """
 import cv2
 import numpy as np
+from backend.core import config as cfg
 
 class CoverEvidence:
  def __init__(self):self.previous=None;self.components=[];self.saved={};self.rings={};self.image=None
  def update(self,image):
-  # Work at half resolution to limit CPU and memory; no second neural model.
-  self.image=cv2.resize(cv2.cvtColor(image,cv2.COLOR_BGR2GRAY),None,fx=.5,fy=.5)
+  # Work at the configured reduced resolution to limit CPU and memory.
+  self.image=cv2.resize(cv2.cvtColor(image,cv2.COLOR_BGR2GRAY),None,fx=cfg.COVER_IMAGE_SCALE,fy=cfg.COVER_IMAGE_SCALE)
   self.components=[];self.before=self.previous
   if self.previous is not None:
    delta=cv2.absdiff(self.image,self.previous)
-   mask=(delta>25).astype(np.uint8)*255
-   mask=cv2.morphologyEx(mask,cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
+   mask=(delta>cfg.COVER_MOTION_MIN_DELTA).astype(np.uint8)*cfg.COVER_INTENSITY_MAX
+   mask=cv2.morphologyEx(mask,cv2.MORPH_CLOSE,np.ones(cfg.COVER_MORPH_KERNEL_SIZE,np.uint8))
    n,labels,stats,_=cv2.connectedComponentsWithStats(mask)
    for x,y,w,h,area in stats[1:]:
-    if area>=30:self.components.append([x,y,x+w,y+h])
+    if area>=cfg.COVER_MIN_COMPONENT_AREA:self.components.append([x,y,x+w,y+h])
   self.previous=self.image.copy()
  def covers(self,person):
-  a=np.asarray(person['xyxy'],float)*.5;area=max(1.,np.prod(a[2:]-a[:2]))
+  a=np.asarray(person['xyxy'],float)*cfg.COVER_IMAGE_SCALE;area=max(cfg.COVER_MIN_AREA,np.prod(a[2:]-a[:2]))
   ring=self.rings.get(person['id'])
   if ring is not None:
    x,y,z,w,baseline,mask=ring;now=self.image[y:w,x:z]
-   if mask.any() and np.abs(now.astype(float)-baseline.astype(float))[mask].mean()/255<=.08:
+   if mask.any() and np.abs(now.astype(float)-baseline.astype(float))[mask].mean()/cfg.COVER_INTENSITY_MAX<=cfg.COVER_RING_BASELINE_MAX_DIFFERENCE:
     self.saved.pop(person['id'],None);self.rings.pop(person['id'],None);return False
   saved=self.saved.get(person['id'])
   if saved is not None:
    x,y,z,w,old,baseline=saved;now=self.image[y:w,x:z]
-   if now.shape==baseline.shape and np.abs(now.astype(float)-baseline.astype(float)).mean()/255<=.10:
+   if now.shape==baseline.shape and np.abs(now.astype(float)-baseline.astype(float)).mean()/cfg.COVER_INTENSITY_MAX<=cfg.COVER_BASELINE_MAX_DIFFERENCE:
     self.saved.pop(person['id'],None);return False
   for b in self.components:
    b=np.asarray(b);overlap=np.maximum(0,np.minimum(a[2:],b[2:])-np.maximum(a[:2],b[:2])).prod()/area
-   if overlap>=.35 and np.prod(b[2:]-b[:2])>=1.2*area and b[3]>=a[3]:
+   if overlap>=cfg.COVER_MIN_PERSON_OVERLAP and np.prod(b[2:]-b[:2])>=cfg.COVER_MIN_COMPONENT_AREA_RATIO*area and b[3]>=a[3]:
     # Store only the covered person's footprint, not a large background area.
     x,y,z,w=np.rint(a).astype(int);x=max(0,x);y=max(0,y);z=min(z,self.image.shape[1]);w=min(w,self.image.shape[0])
     patch=self.image[y:w,x:z]
@@ -49,7 +50,7 @@ class CoverEvidence:
   saved=self.saved.get(person['id'])
   if saved is None:return False
   x,y,z,w,old,baseline=saved;current=self.image[y:w,x:z]
-  if current.shape==old.shape and np.abs(current.astype(float)-old.astype(float)).mean()/255<=.10:return True
+  if current.shape==old.shape and np.abs(current.astype(float)-old.astype(float)).mean()/cfg.COVER_INTENSITY_MAX<=cfg.COVER_SAVED_MAX_DIFFERENCE:return True
   self.saved.pop(person['id'],None);return False
  def prune(self,ids):
   self.saved={k:v for k,v in self.saved.items() if k in ids}
